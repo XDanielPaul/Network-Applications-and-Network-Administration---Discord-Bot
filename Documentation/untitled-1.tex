@@ -1,0 +1,139 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{blindtext}
+\usepackage[ top = 3 cm, left = 2 cm,textheight = 24 cm, textwidth = 17 cm]{geometry}
+\usepackage[czech]{babel}
+\usepackage[bottom]{footmisc}
+\usepackage{ textcomp }
+\usepackage{times}
+\usepackage{ tipa }
+\usepackage{ hyperref }
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{mathptmx}
+\usepackage{subfigure}
+\usepackage{epsfig}
+\usepackage[czech, ruled, linesnumbered, longend,noline]{algorithm2e}
+\usepackage{caption}
+
+\begin{document}
+\nocite{*}
+	\begin{titlepage}
+
+		\begin{center}
+
+			 \textsc{\Huge {Vysoké učení technické v Brně}} \\
+			\textsc{\huge {Fakulta informačních technologií}}\\
+			\vspace{\stretch{0.382}}
+			{\LARGE Projekt ISA - Programování síťové služby} \\ [0.25 cm]
+			{\Huge Discord bot }\\ 	
+			\vspace{\stretch{0.618}}		
+		\end{center}
+
+	{\Large 18. November 2020 \hspace{90mm} Daniel Paul}		
+
+	\end{titlepage}
+
+	\tableofcontents
+	\newpage
+	
+	\section{Uvedenie do problematiky}
+	Úlohou je vytvoriť program isabot, ktorý bude pôsobiť ako bot na komunikačnej službe Discord.
+	Bot sa pripojí na kanál \#isabot a bude zachytávať a opakovať všetky správy odoslané do kanálu uživateľmi, ktorí nemajú v mene podreťazec ''bot'' vo formáte: \textbf{''echo: $<$username$>$ - $<$message$>$''}.\\
+	Na komunikáciu bota so serverom sa používa \emph{HTTPS REST API} \footnote{\href{https://discord.com/developers/docs/reference}{Discord reference documantation}} Discordu, na ktoré sa pripája pomocou HTTPS protokolu s využitím SSL protokolu.
+	\subsection{SSL}
+	\textbf{SSL (Secure Socket Layer)} je protokol, resp. vrstva vložená medzi vrstvu transportnú (TCP/IP) a aplikačnú (HTTP). Zabezpečuje \emph{šifrovanú} dátovú komunikáciu medzi komunikujúcimi stranami. Najčastejšie sa využíva pri komunikácií s webovými servermi pomocou \emph{HTTPS}. V tomto prípade je použitá na komunikáciu s Discord API.
+	\subsection{HTTPS}
+	\textbf{HTTPS (Hypertext Transfer Protocol Secure)} je protokol umožňujúci zabezpečenú komunikáciu v počítačovej sieti. HTTPS využíva protokol HTTP spolu s protokolom SSL alebo TLS. Zaisťuje autentizáciu, dôvernosť a integritu prenášaných dát.
+	\subsection{OAuth2}
+	Pre overenie Discord bota s Discord API sa používa služba \textbf{OAuth2}, pomocou OAuth2 API, ktoré prijíma OAuth2 bearer token. V tomto tokene sú nastavené oprávnenia bota, t.j. akcie, ktoré môže bot vykonávať\\na~serveri.
+	\subsection{Bot token}
+	Pre autorizáciu Discord bota sa používa \textbf{bot token}, ktorý je špecifický pre každého jedného bota.
+	\subsection{Komunikácia s Discord API}
+	S Discord API sa komunikuje cez HTTPS protokol, ktorý prijíma na URL: \emph{https://discord.com/api/v6} GET a POST requesty. V tomto projekte sú použité:\\
+	\\\textbf{Pre získanie dostupných serverov pre bota:} \hspace{2.3cm} \textbf{Pre získanie ID channelu:}
+	\\GET /api/v6/users/@me/guilds HTTP/1.1 \hspace{3 cm} GET /api/v6/guilds/$<$GuildId$>$/channels HTTP/1.1\\
+	Host: discord.com \hspace{6.5cm} Host: discord.com\\
+	Authorization: Bot $<$Bot token$>$ \hspace{4.2 cm} Authorization: Bot $<$Bot token$>$\\
+	\\\textbf{Pre odoslanie opakovanej správy:} \hspace{3.6cm} \textbf{Pre získanie správ v Discord kanáli:}
+	\\POST /api/v6/channels/$<$ChannelId$>$/messages HTTP/1.1  \hspace{0.13cm} GET /api/v6/channels/$<$ChannelId$>$/messages HTTP/1.1\\
+	Host: discord.com \hspace{6.3cm} Host: discord.com\\
+	Authorization: Bot $<$Bot token$>$ \hspace{4 cm} Authorization: Bot $<$Bot token$>$\\  \hspace{3.8 cm} Content-Type: application/json\\Content-Length: $<$Length of content$>$\\
+	\\\{''content'': ''echo: $<$Username$>$ - $<$Message$>$''\}
+	\newpage
+	\section{Návrh a implementácia aplikácie}
+	\subsection{Štruktúra programu}
+	\underline{\textbf{Trieda Message}} - popisuje jednu správu v Discord chate.\\
+	\textbf{string username} - meno použivateľa, ktorý odoslal správu.\\
+   	\textbf{string content} - obsah odoslanej správy.\\
+  	\textbf{string timestamp} - čas odoslania správy.\\
+   	\textbf{string msgID} - ID správy.\\
+   	\textbf{bool are\_Identical(Message b)} - funkcia, ktorá porovnáva dve správy. Ak majú identické parametre, vráti \emph{true}, v opačnom prípade vráti \emph{false}.\\
+   	\\\underline{\textbf{Funckie:}}\\
+   	\textbf{int main(int argc, char *argv[])} - spracuje argumenty, nadviaže spojenie s Discord serverom.\\
+   	\textbf{void printhelp()} - vypíše nápovedu na štandartný výstup.\\
+   	\textbf{int SendPacket(const char *req)} - odošle request na Discord API, ktorý je obsiahnutý v premennej \emph{\*req}\\
+   	\textbf{int RecvPacket(int sw)} - spracuje odpoveď GET requestu. Parameter sw (switch) určuje, ktorý GET request sa spracováva.\\
+   	\textbf{vector$<$string$>$ retrieveMessages(string s)} - rozdelí históriu chatu z odpovede GET requestu na jednotlivé správy.\\
+   	\textbf{void parseMessages(vector$<$string$>$ vs)} - spracuje jednotlivé správy, nové správy odošle pomocou POST requestu do Discord chatu.
+   	
+	\subsection{Priebeh programu}
+	\subsubsection{Argumenty}
+	Na začiatku programu sa spracujú argumenty pomocou knižnice $<getopt.h>$.
+	\subsubsection{Nadviazanie spojenia s Discord serverom pre komunikáciu s API}
+	Vytvorí sa socket, ktorý sa pripojí na IP adresu Discord serveru.\\
+	Ak je vytvorenie socketu úspešné, inicializuje sa SSL spojenie. 
+	\subsubsection{Komunikácia s API a spracovanie requestov}
+	Ak bolo nadviazanie SSL spojenia úspešné, pošlú sa pomocou funkcie \emph{int SendPacket(const char \*req)} GET requesty pre získanie dostupných serverov pre bota (z odpovede sa vyfiltruje pomocou regexu \emph{GuildID} vo funkcii \emph{int RecvPacket(int sw)} (kde \emph{sw == 1}) ) a pre získanie ID channelu \#isabot  (z odpovede sa vyfiltruje pomocou regexu \emph{ChannelID} vo funkcii \emph{int RecvPacket(int sw)} (kde \emph{sw == 2}) ).\\
+	Program vstúpi do nekonečného while cyklu, ktorý posiela GET request pre získanie správ v channeli \#isabot. Odpoveď, ktorá mu príde obsahuje históriu správ chatu, ktorú funckia \emph{vector$<$string$>$ retrieveMessages(string s)} rozdelí na jednotlivé správy, ktoré uloží do vektoru \emph{vector$<$string$>$ str\_vect}. Následne sa z nich vo funkcii \emph{void parseMessages(vector$<$string$>$ vs)} pomocou regexu vyfiltruje \emph{Username, Content, Timestamp a MessageID}.\\
+	V prvom cykle sa vytvoria zo všetkých správ \emph{message} objekty a vložia sa do vektoru \emph{msg\_vect}, ktorý obsahuje správy, ktoré  boli poslané do chatu pred spustením bota a všetky správy, ktoré boli spracované a bot ich nemá opakovať späť do chatu.\\
+	V ďalších cykloch bot z GET requestu pre získanie správ v channeli \#isabot porovnáva \emph{Username, Content, Timestamp a MessageID} správ, so správami ktoré má uložené vo vektore \emph{msg\_vect} a tie, ktoré sa tam nevyskytujú pomocou POST requestu opakuje do chatu vo formáte \textbf{''echo: $<$username$>$ - $<$message$>$''}. \\
+	Danú správu si taktiež pridá do vektoru \emph{msg\_vect}. Ak bol zadaný pri spustení programu argument \emph{[-v$\mid$- -verbose]} vypíše opakovanú správu na štandartný výstup vo formáte \textbf{''$<$channel$>$ - $<$username$>$: $<$message$>$''}.
+	
+	
+	\newpage
+	\section {Základné informácie o programe}
+	\subsection{Použité knižnice}
+	$<$arpa/inet.h$>$
+	$<i$ostream$>$
+	$<$ctype.h$>$
+	$<$stdio.h$>$
+	$<$stdlib.h$>$
+	$<$unistd.h$>$
+	$<$string$>$
+	$<$getopt.h$>$\\
+	$<$string.h$>$
+	$<$sys/socket.h$>$  	
+	$<$openssl/ssl.h$>$
+	$<$openssl/err.h$>$
+	$<$regex$>$
+	$<$vector$>$
+	$<$netinet/in.h$>$
+	\subsection{Súbory}
+	Celý program je obsiahnutý v súbore isabot.cpp.\\
+	Preklad je zabezpečený \emph{Makefile}-om.\\
+	Pomocou príkazu \emph{make} sa súbor isabot.cpp preloží, a vytvorí sa binárny súbor je nazvaný \emph{isabot}.
+
+	
+	\section{Návod na použitie}
+	Pred spustením je potrebné program preložiť príkazom \emph{make}.\\
+	Po preložení sa program spustí príkazom {$./isabot [ $-$h\mid$- -$help] \hspace{0.2cm} [$-$v\mid$- -$verbose] $\hspace{0.2cm}-$t <bot\_access\_token>$}\\
+	Spustenie programu bez argumentov zobrazí nápovedu.\\
+	\\Argumenty:\\
+	\textbf{[-h$\mid$- -help]} - zobrazí nápovedu. (Nepovinný argument)\\
+	\textbf{[-v$\mid$- -verbose]} - bude vypisovať botom opakovanú správu na štandartný výstup vo formáte\\ $<$channel$>$ - $<$username$>$: $<$message$>$. (Nepovinný argument)\\
+	\textbf{- t $<$bot\_access\_token$>$} - za $<bot\_access\_token>$ treba vložiť token používaného bota. (Povinný argument)
+	
+	\section{Záver}
+	Celkovo projekt hodnotím ako pozitívnu a zaujímavú skúsenosť.
+	Dal mi praktické znalosti v komunikácií cez HTTPS protokol pomocou SSL knižnice, posielaní a spracovaní odpovedí GET a POST requestov a komunikácií s Discord API. Oprášil moje znalosti regexu a pri písaní dokumentácie znalosti \LaTeX u .
+
+\newpage
+\section{Literatura}
+\bibliographystyle{czechiso}
+	\bibliography{quotation}	
+	
+
+\end{document}
